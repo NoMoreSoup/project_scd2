@@ -1,3 +1,21 @@
+-- Начальная загрузка если таблица пуста
+INSERT INTO dds.dim_scd2_users (
+    id, created_at, updated_at, first_name, last_name,
+    middle_name, birthday, email, actual_from, actual_to, ts_db
+)
+WITH source AS (
+    SELECT
+        id, created_at, updated_at, first_name, last_name,
+        middle_name, birthday, email, ts_db,
+        LEAD(ts_db) OVER (PARTITION BY id ORDER BY ts_db) AS next_ts_db
+    FROM raw.raw_users
+)
+SELECT
+    id, created_at, updated_at, first_name, last_name,
+    middle_name, birthday, email, ts_db, next_ts_db, ts_db
+FROM source
+WHERE NOT EXISTS (SELECT 1 FROM dds.dim_scd2_users);
+
 -- Часть 1: Закрываем старые версии изменившихся пользователей
 UPDATE dds.dim_scd2_users AS dds
 SET actual_to = new_data.ts_db
